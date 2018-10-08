@@ -1,0 +1,25 @@
+
+
+[root@06i14b003 ~]# cat /sys/fs/cgroup/memory/memory.kmem.usage_in_bytes 
+2286292992
+
+
+systemd(1)───mesos-agent(144359)───mesos-container(9472)───mesos-container(9510)───sh(9761)───kubelet-wrapper(9770)───dockerd(10055)-docker-containerd(10085)-docker-containerd-shim(51323)-jps(77038)
+
+[root@06i14b003 ~]# cat /proc/77038/cgroup 
+11:pids:/mesos/d4406e80-806a-489b-942d-aab42cf59bce/kubepods/burstable/pod8004d807-b6eb-11e8-8bcc-246e96ad7ea4/9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a
+10:devices:/mesos/d4406e80-806a-489b-942d-aab42cf59bce/kubepods/burstable/pod8004d807-b6eb-11e8-8bcc-246e96ad7ea4/9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a
+9:perf_event:/mesos/d4406e80-806a-489b-942d-aab42cf59bce/kubepods/burstable/pod8004d807-b6eb-11e8-8bcc-246e96ad7ea4/9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a
+8:cpuacct,cpu:/mesos/d4406e80-806a-489b-942d-aab42cf59bce/kubepods/burstable/pod8004d807-b6eb-11e8-8bcc-246e96ad7ea4/9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a
+7:blkio:/mesos/d4406e80-806a-489b-942d-aab42cf59bce/kubepods/burstable/pod8004d807-b6eb-11e8-8bcc-246e96ad7ea4/9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a
+6:freezer:/mesos/d4406e80-806a-489b-942d-aab42cf59bce/kubepods/burstable/pod8004d807-b6eb-11e8-8bcc-246e96ad7ea4/9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a
+5:net_prio,net_cls:/mesos/d4406e80-806a-489b-942d-aab42cf59bce/kubepods/burstable/pod8004d807-b6eb-11e8-8bcc-246e96ad7ea4/9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a
+4:cpuset:/mesos/d4406e80-806a-489b-942d-aab42cf59bce/kubepods/burstable/pod8004d807-b6eb-11e8-8bcc-246e96ad7ea4/9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a
+3:memory:/mesos/d4406e80-806a-489b-942d-aab42cf59bce/kubepods/burstable/pod8004d807-b6eb-11e8-8bcc-246e96ad7ea4/9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a
+2:hugetlb:/mesos/d4406e80-806a-489b-942d-aab42cf59bce/kubepods/burstable/pod8004d807-b6eb-11e8-8bcc-246e96ad7ea4/9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a
+1:name=systemd:/mesos/d4406e80-806a-489b-942d-aab42cf59bce/kubepods/burstable/pod8004d807-b6eb-11e8-8bcc-246e96ad7ea4/9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a
+
+
+
+[root@06i14b003 ~]# cat /sys/fs/cgroup/memory/mesos/d4406e80-806a-489b-942d-aab42cf59bce/kubepods/burstable/pod8004d807-b6eb-11e8-8bcc-246e96ad7ea4/9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a/memory.kmem.usage_in_bytes 
+298860544
