@@ -1,11 +1,44 @@
 
+#现象
+1. ps -ef 卡死在某个进程
+2. 卡死原因 无法读取 /proc/77038/cmdline
+3. 无法读取的原因: 可能是没有 kernel memory
+4. 该主机无法启动新容器任务, 但可以直接使用docker run
 
-[root@06i14b003 ~]# cat /sys/fs/cgroup/memory/memory.kmem.usage_in_bytes 
-2286292992
-
-
+# 僵死进程关系
 systemd(1)───mesos-agent(144359)───mesos-container(9472)───mesos-container(9510)───sh(9761)───kubelet-wrapper(9770)───dockerd(10055)-docker-containerd(10085)-docker-containerd-shim(51323)-jps(77038)
 
+# 主机 slab 信息
+[root@06i14b003 9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a]# ls -lrt /sys/kernel/slab | wc -l
+43179
+[root@06i14b003 9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a]# slabtop
+Active / Total Objects (% used)    : 49151066 / 52332897 (93.9%)
+ Active / Total Slabs (% used)      : 1201965 / 1201965 (100.0%)
+ Active / Total Caches (% used)     : 85 / 111 (76.6%)
+ Active / Total Size (% used)       : 9223806.55K / 10012049.75K (92.1%)
+ Minimum / Average / Maximum Object : 0.01K / 0.19K / 12.62K
+
+  OBJS ACTIVE  USE OBJ SIZE  SLABS OBJ/SLAB CACHE SIZE NAME                   
+25746546 25486717  98%    0.19K 613013       42   4904104K dentry
+10895220 10803329  99%    0.09K 259410       42   1037640K kmalloc-96
+4585386 4074743  88%    0.10K 117574	   39    470296K buffer_head
+2263424 2002491  88%    0.06K  35366	   64    141464K kmalloc-64
+1562659 1542902  98%    0.64K  31891	   49   1020512K proc_inode_cache
+724392 700133  96%    0.11K  20122	 36     80488K kernfs_node_cache
+505664 316508  62%    0.06K   7901	 64     31604K kmem_cache_node
+474595 306138  64%    0.58K   8629	 55    276128K inode_cache
+432384 272525  63%    0.25K   6756	 64    108096K kmalloc-256
+400384 134932  33%    0.02K   1564	256	 6256K kmalloc-16
+394884 290182  73%    0.19K   9402	 42     75216K kmalloc-192
+366435 329738  89%    0.62K   7185	 51    229920K sock_inode_cache
+339976 206953  60%    0.50K   5313	 64    170016K kmalloc-512
+309152 225978  73%    1.00K   9661	 32    309152K kmalloc-1024
+301952 173876  57%    0.12K   4718	 64     37744K kmalloc-128
+290304 110081  37%    0.01K    567	512	 2268K kmalloc-8
+277440 182499  65%    0.16K   5440	 51     43520K sigqueue
+264712 264144  99%    0.07K   4727	 56     18908K Acpi-ParseExt
+
+# 查找进程cgroup
 [root@06i14b003 ~]# cat /proc/77038/cgroup 
 11:pids:/mesos/d4406e80-806a-489b-942d-aab42cf59bce/kubepods/burstable/pod8004d807-b6eb-11e8-8bcc-246e96ad7ea4/9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a
 10:devices:/mesos/d4406e80-806a-489b-942d-aab42cf59bce/kubepods/burstable/pod8004d807-b6eb-11e8-8bcc-246e96ad7ea4/9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a
@@ -20,6 +53,46 @@ systemd(1)───mesos-agent(144359)───mesos-container(9472)───mes
 1:name=systemd:/mesos/d4406e80-806a-489b-942d-aab42cf59bce/kubepods/burstable/pod8004d807-b6eb-11e8-8bcc-246e96ad7ea4/9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a
 
 
-
+# 僵死进程cgroup数据
 [root@06i14b003 ~]# cat /sys/fs/cgroup/memory/mesos/d4406e80-806a-489b-942d-aab42cf59bce/kubepods/burstable/pod8004d807-b6eb-11e8-8bcc-246e96ad7ea4/9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a/memory.kmem.usage_in_bytes 
 298860544
+[root@06i14b003 9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a]# cat cgroup.procs 
+51341
+52658
+52674
+52720
+52747
+52831
+52841
+77038
+77039
+[root@06i14b003 9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a]# cat memory.max_usage_in_bytes 
+1348005888
+[root@06i14b003 9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a]# cat memory.max_usage_in_bytes 
+1348005888
+[root@06i14b003 9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a]# cat memory.limit_in_bytes 
+4294967296
+cat /sys/fs/cgroup/memory/mesos/d4406e80-806a-489b-942d-aab42cf59bce/memory.limit_in_bytes 
+139116675072
+[root@06i14b003 9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a]# cat memory.kmem.usage_in_bytes 
+297033728
+[root@06i14b003 9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a]# cat memory.kmem.limit_in_bytes 
+9223372036854771712
+[root@06i14b003 9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a]# cat /sys/fs/cgroup/memory/mesos/d4406e80-806a-489b-942d-aab42cf59bce/memory.kmem.usage_in_bytes 
+1357221888
+[root@06i14b003 9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a]# cat /sys/fs/cgroup/memory/mesos/d4406e80-806a-489b-942d-aab42cf59bce/memory.kmem.limit_in_bytes 
+9223372036854771712
+
+# 修改容器内存大小限制（失败）
+[root@06i14b003 9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a]# echo 10737418240 > memory.limit_in_bytes
+-bash: echo: write error: Invalid argument
+[root@06i14b003 9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a]# 
+[root@06i14b003 9b83bffe2a8ce842c8ccfbd401bd056a423eec835c81caa8722ad116c0f2ee3a]# echo 10G > memory.limit_in_bytes
+-bash: echo: write error: Invalid argument
+
+#ucr 进入容器（失败）
+[root@04i06b003 ~]# dcos task  | grep kubelet | grep 69
+kube-node-0-kubelet                 10.125.128.69  root    R    demo-k8s-1__kube-node-0-kubelet__b2a4b911-befc-4723-b6c5-bd51985f09b1                 9620de1d-3d65-4f36-9e6b-511933774847-S7    ---    ---
+[root@06i14b003 ~]# dcos task exec -task exec -it demo-k8s-1__kube-node-0-kubelet__b2a4b911-befc-4723-b6c5-bd51985f09b1 /bin/sh
+Error while fetching [https://10.172.49.13/slave/9620de1d-3d65-4f36-9e6b-511933774847-S7/api/v1]: HTTP 504: "Gateway Time-out".
+
